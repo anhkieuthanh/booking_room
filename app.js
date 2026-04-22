@@ -1,50 +1,27 @@
 const SLOT_MINUTES = 30;
 const START_HOUR = 8;
 const END_HOUR = 17;
+const DB_STORAGE_KEY = "meridian-rooms-db";
+const DB_VERSION = 1;
 const today = new Date();
 const currentWeekStart = startOfWeek(today);
 const nextWeekStart = addDays(currentWeekStart, 7);
-const todayKey = toDateKey(today);
 
-const roomConfigs = [
-  {
-    id: "dashboard-1",
-    dashboardTitle: "Dashboard phòng 1",
-    roomName: "Phòng họp 1",
-    location: "Tầng 12",
-  },
-  {
-    id: "dashboard-2",
-    dashboardTitle: "Dashboard phòng 2",
-    roomName: "Phòng họp 2",
-    location: "Tầng 8",
-  },
-];
-
-const rooms = roomConfigs.map((config, index) => {
-  const schedule = {};
-  const weekDates = [...weekDatesFor(currentWeekStart), ...weekDatesFor(nextWeekStart)];
-
-  weekDates.forEach((dateKey) => {
-    schedule[dateKey] = generateInitialBookings(config.id, dateKey, index);
-  });
-
-  return {
-    ...config,
-    capacity: index === 0 ? 12 : 8,
-    schedule,
-    selectedDate: null,
-    expanded: index === 0,
-    formStartTime: "",
-    formEndTime: "",
-  };
-});
+let rooms = [];
 
 const root = document.getElementById("dashboard-root");
 
 document.addEventListener("DOMContentLoaded", () => {
-  render();
+  initApp();
 });
+
+async function initApp() {
+  const database = await loadDatabase();
+  rooms = hydrateRooms(database.rooms || []);
+  ensureVisibleWeekDates();
+  persistDatabase();
+  render();
+}
 
 function render() {
   root.innerHTML = rooms.map((room) => renderDashboard(room)).join("");
@@ -69,7 +46,6 @@ function renderDashboard(room) {
     <article class="dashboard panel ${room.expanded ? "is-open" : ""}" data-room-id="${room.id}">
       <button class="dashboard-header" type="button" data-action="toggle-dashboard" aria-expanded="${room.expanded}">
         <div class="dashboard-title">
-          <p class="eyebrow">${room.dashboardTitle}</p>
           <h2>${room.roomName}</h2>
           <p class="dashboard-subtitle">${room.location} · ${room.capacity} chỗ ngồi</p>
         </div>
@@ -79,9 +55,8 @@ function renderDashboard(room) {
         </div>
       </button>
 
-      ${
-        room.expanded
-          ? `
+      ${room.expanded
+      ? `
             <div class="dashboard-body">
               <div class="weeks-grid">
                 <section class="week-panel">
@@ -109,9 +84,8 @@ function renderDashboard(room) {
                 </section>
               </div>
 
-              ${
-                selectedDate
-                  ? `
+              ${selectedDate
+        ? `
                     <div class="detail-grid">
                       <section class="detail-panel">
                         <div class="section-heading">
@@ -134,21 +108,20 @@ function renderDashboard(room) {
                         </div>
 
                         <div class="agenda-list">
-                          ${
-                            selectedBookings.length
-                              ? selectedBookings
-                                  .map(
-                                    (booking) => `
+                          ${selectedBookings.length
+          ? selectedBookings
+            .map(
+              (booking) => `
                                       <div class="agenda-item">
                                         <strong>${booking.start} - ${booking.end}</strong>
                                         <span>${escapeHtml(booking.person)}</span>
                                         <p>${escapeHtml(booking.purpose)}</p>
                                       </div>
                                     `
-                                  )
-                                  .join("")
-                              : `<p class="empty-note">Ngày này chưa có buổi họp nào.</p>`
-                          }
+            )
+            .join("")
+          : `<p class="empty-note">Ngày này chưa có buổi họp nào.</p>`
+        }
                         </div>
                       </section>
 
@@ -160,9 +133,8 @@ function renderDashboard(room) {
                           </div>
                         </div>
 
-                        ${
-                          hasBookableWindow
-                            ? `
+                        ${hasBookableWindow
+          ? `
                               <form class="booking-form" data-action="book" data-room-id="${room.id}">
                                 <input type="hidden" name="date" value="${selectedDate}" />
 
@@ -197,10 +169,6 @@ function renderDashboard(room) {
                                   ></textarea>
                                 </label>
 
-                                <div class="form-hint">
-                                  Chọn giờ bắt đầu và giờ kết thúc để hệ thống tự tính thời lượng.
-                                </div>
-
                                 <button class="button button-primary" type="submit">
                                   Đặt lịch
                                 </button>
@@ -208,17 +176,17 @@ function renderDashboard(room) {
                                 <p class="form-error" data-error></p>
                               </form>
                             `
-                            : `<p class="empty-note">Ngày này đã full chỗ hoặc không còn khung giờ trống.</p>`
-                        }
+          : `<p class="empty-note">Ngày này đã full chỗ hoặc không còn khung giờ trống.</p>`
+        }
                       </section>
                     </div>
                   `
-                  : ""
-              }
+        : ""
+      }
             </div>
           `
-          : ""
-      }
+      : ""
+    }
     </article>
   `;
 }
@@ -298,6 +266,7 @@ function handleBookingSubmit(event) {
   room.formEndTime = "";
 
   errorEl.textContent = "";
+  persistDatabase();
   form.reset();
   render();
 }
@@ -450,46 +419,6 @@ function overlaps(startA, endA, startB, endB) {
   return toMinutes(startA) < toMinutes(endB) && toMinutes(endA) > toMinutes(startB);
 }
 
-function generateInitialBookings(roomId, dateKey, roomIndex) {
-  const seed = seededNumber(`${roomId}-${dateKey}`);
-  const bookings = [];
-
-  if (seed % 11 === 0) {
-    bookings.push({
-      start: "08:00",
-      end: "18:00",
-      duration: 600,
-      person: roomIndex === 0 ? "Nguyễn Minh Anh" : "Trần Quốc Huy",
-      purpose: "Workshop nội bộ",
-    });
-    return bookings;
-  }
-
-  const patterns = [
-    { start: "08:30", duration: 60, person: "Lê Hoàng", purpose: "Họp tiến độ" },
-    { start: "10:00", duration: 90, person: "Phạm Ngọc", purpose: "Rà soát kế hoạch" },
-    { start: "13:00", duration: 60, person: "Đỗ Thảo", purpose: "Trao đổi dự án" },
-    { start: "15:30", duration: 60, person: "Vũ Đức", purpose: "Phỏng vấn ứng viên" },
-  ];
-
-  const count = seed % 3;
-  for (let index = 0; index < count; index += 1) {
-    const pattern = patterns[(seed + index * 2) % patterns.length];
-    const end = addMinutes(pattern.start, pattern.duration);
-    if (
-      !bookings.some((booking) => overlaps(pattern.start, end, booking.start, booking.end)) &&
-      toMinutes(end) <= toMinutes("18:00")
-    ) {
-      bookings.push({
-        ...pattern,
-        end,
-      });
-    }
-  }
-
-  return bookings.sort((a, b) => a.start.localeCompare(b.start));
-}
-
 function countTotalBookings(room) {
   return Object.values(room.schedule).reduce((sum, bookings) => sum + bookings.length, 0);
 }
@@ -587,6 +516,110 @@ function toDateKey(date) {
 
 function escapeAttr(value) {
   return escapeHtml(String(value ?? ""));
+}
+
+function hydrateRooms(seedRooms) {
+  return seedRooms.map((room, index) => ({
+    id: room.id,
+    roomName: room.roomName,
+    location: room.location,
+    capacity: room.capacity,
+    schedule: normalizeSchedule(room.schedule || {}),
+    selectedDate: null,
+    expanded: index === 0,
+    formStartTime: "",
+    formEndTime: "",
+  }));
+}
+
+function normalizeSchedule(schedule) {
+  return Object.fromEntries(
+    Object.entries(schedule).map(([dateKey, bookings]) => [
+      dateKey,
+      Array.isArray(bookings)
+        ? bookings.map((booking) => ({
+            start: booking.start,
+            end: booking.end,
+            duration: booking.duration,
+            person: booking.person,
+            purpose: booking.purpose,
+          }))
+        : [],
+    ])
+  );
+}
+
+function ensureVisibleWeekDates() {
+  const requiredDates = [...weekDatesFor(currentWeekStart), ...weekDatesFor(nextWeekStart)];
+  rooms.forEach((room) => {
+    requiredDates.forEach((dateKey) => {
+      if (!room.schedule[dateKey]) {
+        room.schedule[dateKey] = [];
+      }
+    });
+  });
+}
+
+async function loadDatabase() {
+  const fallback = {
+    meta: { version: DB_VERSION },
+    rooms: [
+      {
+        id: "dashboard-1",
+        roomName: "Phòng họp Lớn",
+        location: "Tầng 6",
+        capacity: 12,
+        schedule: {},
+      },
+      {
+        id: "dashboard-2",
+        roomName: "Phòng họp Nhỏ",
+        location: "Tầng 6",
+        capacity: 8,
+        schedule: {},
+      },
+    ],
+  };
+
+  const saved = localStorage.getItem(DB_STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed?.meta?.version === DB_VERSION && Array.isArray(parsed.rooms)) {
+        return parsed;
+      }
+    } catch {
+      localStorage.removeItem(DB_STORAGE_KEY);
+    }
+  }
+
+  try {
+    const response = await fetch("./db.json", { cache: "no-store" });
+    if (response.ok) {
+      const json = await response.json();
+      return {
+        meta: { version: DB_VERSION },
+        rooms: Array.isArray(json.rooms) ? json.rooms : [],
+      };
+    }
+  } catch {
+    // Fall through to built-in fallback.
+  }
+
+  return fallback;
+}
+
+function persistDatabase() {
+  localStorage.setItem(DB_STORAGE_KEY, JSON.stringify({
+    meta: { version: DB_VERSION },
+    rooms: rooms.map((room) => ({
+      id: room.id,
+      roomName: room.roomName,
+      location: room.location,
+      capacity: room.capacity,
+      schedule: room.schedule,
+    })),
+  }));
 }
 
 function escapeHtml(value) {
