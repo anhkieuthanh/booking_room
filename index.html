@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meridian Rooms | Meeting Room Booking</title>
+    <meta
+      name="description"
+      content="Internal meeting room booking portal for employees to find rooms, check live availability, and reserve spaces quickly."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">M</div>
+        <div>
+          <p class="eyebrow">Internal workplace tools</p>
+          <h1>Meridian Rooms</h1>
+        </div>
+      </div>
+
+      <nav class="topnav" aria-label="Primary">
+        <a href="#rooms">Rooms</a>
+        <a href="#booking">Booking</a>
+        <a href="#confirmation">Confirmation</a>
+      </nav>
+
+      <div class="user-chip" aria-label="Signed in user">
+        <span class="user-avatar">AL</span>
+        <div>
+          <strong>Alice Lee</strong>
+          <span>Operations</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Book a room in seconds</p>
+          <h2>Find the right meeting room, check live availability, and reserve it without friction.</h2>
+          <p class="hero-text">
+            A polished internal booking experience for strategy sessions, client calls, team standups, and
+            hybrid workshops.
+          </p>
+
+          <div class="hero-actions">
+            <a class="button button-primary" href="#rooms">Find a room</a>
+            <a class="button button-secondary" href="#booking">Jump to booking</a>
+          </div>
+
+          <div class="hero-stats" id="hero-stats" aria-label="Booking highlights"></div>
+        </div>
+
+        <div class="hero-board">
+          <div class="hero-board-header">
+            <div>
+              <p class="eyebrow">Today at a glance</p>
+              <h3>Availability snapshot</h3>
+            </div>
+            <span class="pill pill-success">Live slots</span>
+          </div>
+
+          <div class="timeline" id="timeline-summary" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel filters" aria-labelledby="filter-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Search</p>
+              <h3 id="filter-title">Filter rooms</h3>
+            </div>
+            <button class="ghost-button" id="reset-filters" type="button">Reset</button>
+          </div>
+
+          <label class="field">
+            <span>Search</span>
+            <input id="search-input" type="search" placeholder="Room name, floor, or feature" />
+          </label>
+
+          <label class="field">
+            <span>Location</span>
+            <select id="location-filter"></select>
+          </label>
+
+          <label class="field">
+            <span>Minimum capacity</span>
+            <input id="capacity-filter" type="range" min="2" max="24" step="1" />
+            <div class="field-meta">
+              <span>2 people</span>
+              <strong id="capacity-value">12</strong>
+              <span>24 people</span>
+            </div>
+          </label>
+
+          <label class="field checkline">
+            <input id="availability-filter" type="checkbox" />
+            <span>Show only rooms with open slots on the selected date</span>
+          </label>
+
+          <div class="field">
+            <span>Equipment</span>
+            <div class="chip-grid" id="equipment-filters"></div>
+          </div>
+
+          <label class="field">
+            <span>Meeting date</span>
+            <input id="date-filter" type="date" />
+          </label>
+        </aside>
+
+        <section class="panel rooms-panel" id="rooms" aria-labelledby="rooms-title">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Available spaces</p>
+              <h3 id="rooms-title">Meeting rooms</h3>
+            </div>
+            <div class="result-meta">
+              <span id="result-count"></span>
+              <span class="pill pill-neutral" id="selected-count"></span>
+            </div>
+          </div>
+
+          <div class="rooms-grid" id="rooms-grid" aria-live="polite"></div>
+        </section>
+
+        <section class="detail-column">
+          <article class="panel detail-card" id="room-detail" aria-labelledby="detail-title"></article>
+
+          <article class="panel booking-card" id="booking" aria-labelledby="booking-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Reserve</p>
+                <h3 id="booking-title">Booking form</h3>
+              </div>
+              <span class="pill pill-soft" id="booking-room-pill">Choose a room</span>
+            </div>
+
+            <form id="booking-form" novalidate>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Date</span>
+                  <input id="booking-date" type="date" required />
+                </label>
+
+                <label class="field">
+                  <span>Start time</span>
+                  <select id="start-time" required></select>
+                </label>
+
+                <label class="field">
+                  <span>Duration</span>
+                  <select id="duration">
+                    <option value="30">30 minutes</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="90">1.5 hours</option>
+                    <option value="120">2 hours</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Attendees</span>
+                  <input id="attendees" type="number" min="1" value="8" required />
+                </label>
+              </div>
+
+              <div class="field">
+                <span>Required equipment</span>
+                <div class="chip-grid" id="required-equipment"></div>
+              </div>
+
+              <label class="field">
+                <span>Notes</span>
+                <textarea id="booking-notes" rows="3" placeholder="Any setup instructions, agenda notes, or access details"></textarea>
+              </label>
+
+              <div class="form-summary" id="booking-summary"></div>
+
+              <div class="form-actions">
+                <button class="button button-primary" type="submit">Reserve room</button>
+                <button class="button button-secondary" id="fill-next-slot" type="button">Use next available slot</button>
+              </div>
+
+              <p class="form-error" id="booking-error" role="alert" aria-live="assertive"></p>
+            </form>
+          </article>
+
+          <article class="panel confirmation-card" id="confirmation" aria-labelledby="confirmation-title">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Confirmation</p>
+                <h3 id="confirmation-title">Reservation summary</h3>
+              </div>
+              <span class="pill pill-success">Ready</span>
+            </div>
+
+            <div id="confirmation-body" class="confirmation-body">
+              <p class="placeholder">Your booking confirmation will appear here after you reserve a room.</p>
+            </div>
+          </article>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
