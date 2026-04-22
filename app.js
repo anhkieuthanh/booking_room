@@ -1,9 +1,6 @@
 const SLOT_MINUTES = 30;
 const START_HOUR = 8;
-const END_HOUR = 18;
-const DAY_NAMES = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-const DURATION_OPTIONS = [30, 60, 90, 120];
-
+const END_HOUR = 17;
 const today = new Date();
 const currentWeekStart = startOfWeek(today);
 const nextWeekStart = addDays(currentWeekStart, 7);
@@ -36,8 +33,10 @@ const rooms = roomConfigs.map((config, index) => {
     ...config,
     capacity: index === 0 ? 12 : 8,
     schedule,
-    selectedDate: dateKeyOrFallback(todayKey, weekDates, weekDates[0]),
+    selectedDate: null,
     expanded: index === 0,
+    formStartTime: "",
+    formEndTime: "",
   };
 });
 
@@ -55,12 +54,16 @@ function render() {
 function renderDashboard(room) {
   const currentWeek = weekDatesFor(currentWeekStart);
   const nextWeek = weekDatesFor(nextWeekStart);
-  const selectedDate = room.selectedDate || currentWeek[0];
-  const selectedBookings = room.schedule[selectedDate] || [];
-  const selectedAvailability = getDayAvailability(room, selectedDate);
-  const selectedStatus = getDayStatus(room, selectedDate);
-  const availableStarts = getAvailableStartTimes(room, selectedDate);
-  const canBook = selectedStatus !== "full" && availableStarts.length > 0;
+  const selectedDate = room.selectedDate;
+  const selectedBookings = selectedDate ? room.schedule[selectedDate] || [] : [];
+  const selectedAvailability = selectedDate ? getDayAvailability(room, selectedDate) : [];
+  const selectedStatus = selectedDate ? getDayStatus(room, selectedDate) : "idle";
+  const availableStarts = selectedDate ? getAvailableStartTimes(room, selectedDate) : [];
+  const selectedStartTime = room.formStartTime || "";
+  const availableEnds = selectedDate && selectedStartTime ? getAvailableEndTimes(room, selectedDate, selectedStartTime) : [];
+  const selectedEndTime = availableEnds.includes(room.formEndTime) ? room.formEndTime : "";
+  const hasBookableWindow = selectedDate && selectedStatus !== "full" && availableStarts.length > 0;
+  const computedDuration = selectedStartTime && selectedEndTime ? toMinutes(selectedEndTime) - toMinutes(selectedStartTime) : null;
 
   return `
     <article class="dashboard panel ${room.expanded ? "is-open" : ""}" data-room-id="${room.id}">
@@ -106,96 +109,112 @@ function renderDashboard(room) {
                 </section>
               </div>
 
-              <div class="detail-grid">
-                <section class="detail-panel">
-                  <div class="section-heading">
-                    <div>
-                      <p class="eyebrow">Ngày đã chọn</p>
-                      <h3>${formatLongDate(selectedDate)}</h3>
-                    </div>
-                    <span class="pill ${statusPillClass(selectedStatus)}">${statusLabel(selectedStatus)}</span>
-                  </div>
+              ${
+                selectedDate
+                  ? `
+                    <div class="detail-grid">
+                      <section class="detail-panel">
+                        <div class="section-heading">
+                          <div>
+                            <p class="eyebrow">Ngày đã chọn</p>
+                            <h3>${formatLongDate(selectedDate)}</h3>
+                          </div>
+                          <span class="pill ${statusPillClass(selectedStatus)}">${statusLabel(selectedStatus)}</span>
+                        </div>
 
-                  <div class="day-summary">
-                    <div class="summary-item">
-                      <span>Trạng thái</span>
-                      <strong>${dayStatusText(selectedStatus, selectedAvailability)}</strong>
-                    </div>
-                    <div class="summary-item">
-                      <span>Chỗ còn trống</span>
-                      <strong>${availableStarts.length}</strong>
-                    </div>
-                  </div>
+                        <div class="day-summary">
+                          <div class="summary-item">
+                            <span>Trạng thái</span>
+                            <strong>${dayStatusText(selectedStatus, selectedAvailability)}</strong>
+                          </div>
+                          <div class="summary-item">
+                            <span>Khung giờ trống</span>
+                            <strong>${availableStarts.length}</strong>
+                          </div>
+                        </div>
 
-                  <div class="agenda-list">
-                    ${
-                      selectedBookings.length
-                        ? selectedBookings
-                            .map(
-                              (booking) => `
-                                <div class="agenda-item">
-                                  <strong>${booking.start} - ${booking.end}</strong>
-                                  <span>${escapeHtml(booking.person)}</span>
-                                  <p>${escapeHtml(booking.purpose)}</p>
+                        <div class="agenda-list">
+                          ${
+                            selectedBookings.length
+                              ? selectedBookings
+                                  .map(
+                                    (booking) => `
+                                      <div class="agenda-item">
+                                        <strong>${booking.start} - ${booking.end}</strong>
+                                        <span>${escapeHtml(booking.person)}</span>
+                                        <p>${escapeHtml(booking.purpose)}</p>
+                                      </div>
+                                    `
+                                  )
+                                  .join("")
+                              : `<p class="empty-note">Ngày này chưa có buổi họp nào.</p>`
+                          }
+                        </div>
+                      </section>
+
+                      <section class="detail-panel">
+                        <div class="section-heading">
+                          <div>
+                            <p class="eyebrow">Đặt lịch</p>
+                            <h3>Thông tin buổi họp</h3>
+                          </div>
+                        </div>
+
+                        ${
+                          hasBookableWindow
+                            ? `
+                              <form class="booking-form" data-action="book" data-room-id="${room.id}">
+                                <input type="hidden" name="date" value="${selectedDate}" />
+
+                                <label class="field">
+                                  <span>Thời gian dùng phòng</span>
+                                  <div class="inline-grid time-grid">
+                                    <select name="startTime">
+                                      ${renderStartTimeOptions(availableStarts, selectedStartTime)}
+                                    </select>
+                                    <select name="endTime" ${selectedStartTime ? "" : "disabled"}>
+                                      ${renderEndTimeOptions(availableEnds, selectedEndTime)}
+                                    </select>
+                                  </div>
+                                </label>
+
+                                <div class="time-summary">
+                                  <span>Thời lượng tự tính</span>
+                                  <strong>${computedDuration ? `${computedDuration} phút` : "--"}</strong>
                                 </div>
-                              `
-                            )
-                            .join("")
-                        : `<p class="empty-note">Ngày này chưa có buổi họp nào.</p>`
-                    }
-                  </div>
-                </section>
 
-                <section class="detail-panel">
-                  <div class="section-heading">
-                    <div>
-                      <p class="eyebrow">Đặt lịch</p>
-                      <h3>Thông tin buổi họp</h3>
+                                <label class="field">
+                                  <span>Người đặt</span>
+                                  <input name="person" type="text" placeholder="VD: Nguyễn Văn A" />
+                                </label>
+
+                                <label class="field">
+                                  <span>Mục đích sử dụng</span>
+                                  <textarea
+                                    name="purpose"
+                                    rows="4"
+                                    placeholder="VD: Họp kế hoạch tuần"
+                                  ></textarea>
+                                </label>
+
+                                <div class="form-hint">
+                                  Chọn giờ bắt đầu và giờ kết thúc để hệ thống tự tính thời lượng.
+                                </div>
+
+                                <button class="button button-primary" type="submit">
+                                  Đặt lịch
+                                </button>
+
+                                <p class="form-error" data-error></p>
+                              </form>
+                            `
+                            : `<p class="empty-note">Ngày này đã full chỗ hoặc không còn khung giờ trống.</p>`
+                        }
+                      </section>
                     </div>
-                  </div>
-
-                  <form class="booking-form" data-action="book" data-room-id="${room.id}">
-                    <input type="hidden" name="date" value="${selectedDate}" />
-
-                    <label class="field">
-                      <span>Thời gian dùng phòng</span>
-                      <div class="inline-grid">
-                        <select name="startTime" ${canBook ? "" : "disabled"}>
-                          ${renderStartTimeOptions(availableStarts)}
-                        </select>
-                        <select name="duration" ${canBook ? "" : "disabled"}>
-                          ${DURATION_OPTIONS.map((minutes) => `<option value="${minutes}">${minutes} phút</option>`).join("")}
-                        </select>
-                      </div>
-                    </label>
-
-                    <label class="field">
-                      <span>Người đặt</span>
-                      <input name="person" type="text" placeholder="VD: Nguyễn Văn A" ${canBook ? "" : "disabled"} />
-                    </label>
-
-                    <label class="field">
-                      <span>Mục đích sử dụng</span>
-                      <textarea
-                        name="purpose"
-                        rows="4"
-                        placeholder="VD: Họp kế hoạch tuần"
-                        ${canBook ? "" : "disabled"}
-                      ></textarea>
-                    </label>
-
-                    <div class="form-hint">
-                      ${canBook ? "Chọn giờ trống để đặt lịch cho ngày này." : "Ngày này đã full chỗ hoặc không còn khung giờ trống."}
-                    </div>
-
-                    <button class="button button-primary" type="submit" ${canBook ? "" : "disabled"}>
-                      Đặt lịch
-                    </button>
-
-                    <p class="form-error" data-error></p>
-                  </form>
-                </section>
-              </div>
+                  `
+                  : ""
+              }
             </div>
           `
           : ""
@@ -211,9 +230,6 @@ function bindDashboardEvents() {
       const roomId = card.dataset.roomId;
       const room = rooms.find((item) => item.id === roomId);
       room.expanded = !room.expanded;
-      if (!room.selectedDate) {
-        room.selectedDate = todayKey;
-      }
       render();
     });
   });
@@ -223,6 +239,8 @@ function bindDashboardEvents() {
       const card = button.closest("[data-room-id]");
       const room = rooms.find((item) => item.id === card.dataset.roomId);
       room.selectedDate = button.dataset.date;
+      room.formStartTime = "";
+      room.formEndTime = "";
       room.expanded = true;
       render();
     });
@@ -230,6 +248,18 @@ function bindDashboardEvents() {
 
   root.querySelectorAll('[data-action="book"]').forEach((form) => {
     form.addEventListener("submit", handleBookingSubmit);
+    form.addEventListener("change", (event) => {
+      const room = rooms.find((item) => item.id === form.dataset.roomId);
+      if (event.target.name === "startTime") {
+        room.formStartTime = event.target.value;
+        room.formEndTime = "";
+        render();
+      }
+      if (event.target.name === "endTime") {
+        room.formEndTime = event.target.value;
+        render();
+      }
+    });
   });
 }
 
@@ -242,19 +272,21 @@ function handleBookingSubmit(event) {
   const errorEl = form.querySelector("[data-error]");
   const date = form.elements.date.value;
   const startTime = form.elements.startTime.value;
-  const duration = Number(form.elements.duration.value);
+  const endTime = form.elements.endTime.value;
   const person = form.elements.person.value.trim();
   const purpose = form.elements.purpose.value.trim();
 
-  const validationError = validateBooking(room, date, startTime, duration, person, purpose);
+  const validationError = validateBooking(room, date, startTime, endTime, person, purpose);
   if (validationError) {
     errorEl.textContent = validationError;
     return;
   }
 
+  const duration = toMinutes(endTime) - toMinutes(startTime);
+
   const booking = {
     start: startTime,
-    end: addMinutes(startTime, duration),
+    end: endTime,
     duration,
     person,
     purpose,
@@ -262,15 +294,17 @@ function handleBookingSubmit(event) {
 
   room.schedule[date] = [...(room.schedule[date] || []), booking].sort((a, b) => a.start.localeCompare(b.start));
   room.selectedDate = date;
+  room.formStartTime = "";
+  room.formEndTime = "";
 
   errorEl.textContent = "";
   form.reset();
   render();
 }
 
-function validateBooking(room, date, startTime, duration, person, purpose) {
-  if (!date || !startTime) {
-    return "Vui lòng chọn ngày và thời gian.";
+function validateBooking(room, date, startTime, endTime, person, purpose) {
+  if (!date || !startTime || !endTime) {
+    return "Vui lòng chọn giờ bắt đầu và giờ kết thúc.";
   }
   if (!person) {
     return "Vui lòng nhập người đặt.";
@@ -279,13 +313,23 @@ function validateBooking(room, date, startTime, duration, person, purpose) {
     return "Vui lòng nhập mục đích sử dụng.";
   }
 
+  if (!isValidTimeFormat(startTime) || !isValidTimeFormat(endTime)) {
+    return "Giờ phải nhập theo định dạng HH:MM.";
+  }
+  if (!isSlotAligned(startTime) || !isSlotAligned(endTime)) {
+    return "Giờ phải theo mốc 30 phút.";
+  }
+  if (toMinutes(endTime) <= toMinutes(startTime)) {
+    return "Giờ kết thúc phải lớn hơn giờ bắt đầu.";
+  }
+
   const availability = getDayAvailability(room, date);
   const slotIndex = availability.findIndex((slot) => slot.time === startTime);
   if (slotIndex < 0) {
     return "Khung giờ này không còn trống.";
   }
 
-  const neededSlots = Math.ceil(duration / SLOT_MINUTES);
+  const neededSlots = Math.ceil((toMinutes(endTime) - toMinutes(startTime)) / SLOT_MINUTES);
   const selectedSlots = availability.slice(slotIndex, slotIndex + neededSlots);
   if (selectedSlots.length < neededSlots || selectedSlots.some((slot) => !slot.available)) {
     return "Thời gian đã chọn bị trùng hoặc không đủ trống.";
@@ -299,8 +343,6 @@ function renderWeekDays(room, weekDates) {
     .map((dateKey) => {
       const status = getDayStatus(room, dateKey);
       const selected = room.selectedDate === dateKey;
-      const bookingCount = (room.schedule[dateKey] || []).length;
-      const available = getAvailableStartTimes(room, dateKey).length;
 
       return `
         <button
@@ -309,19 +351,11 @@ function renderWeekDays(room, weekDates) {
           data-action="select-day"
           data-date="${dateKey}"
         >
-          <span>${DAY_NAMES[new Date(`${dateKey}T12:00:00`).getDay() || 7 - 1]}</span>
           <strong>${shortDayLabel(dateKey)}</strong>
-          <small>${dayTileText(status, bookingCount, available)}</small>
         </button>
       `;
     })
     .join("");
-}
-
-function dayTileText(status, bookingCount, available) {
-  if (status === "full") return "Full";
-  if (bookingCount > 0) return `${bookingCount} buổi họp`;
-  return `${available} giờ trống`;
 }
 
 function dayTileClass(status) {
@@ -348,12 +382,20 @@ function dayStatusText(status, availability) {
   return "Có thể đặt lịch";
 }
 
-function renderStartTimeOptions(availableStarts) {
+function renderStartTimeOptions(availableStarts, selectedStartTime) {
   if (!availableStarts.length) {
     return `<option value="">Không còn khung giờ trống</option>`;
   }
 
-  return availableStarts.map((time) => `<option value="${time}">${time}</option>`).join("");
+  return [`<option value="">Chọn giờ bắt đầu</option>`, ...availableStarts.map((time) => `<option value="${time}" ${time === selectedStartTime ? "selected" : ""}>${time}</option>`)].join("");
+}
+
+function renderEndTimeOptions(availableEnds, selectedEndTime) {
+  if (!availableEnds.length) {
+    return `<option value="">Chọn giờ bắt đầu trước</option>`;
+  }
+
+  return [`<option value="">Chọn giờ kết thúc</option>`, ...availableEnds.map((time) => `<option value="${time}" ${time === selectedEndTime ? "selected" : ""}>${time}</option>`)].join("");
 }
 
 function getDayStatus(room, dateKey) {
@@ -384,6 +426,24 @@ function getDayAvailability(room, dateKey) {
 function getAvailableStartTimes(room, dateKey) {
   const availability = getDayAvailability(room, dateKey);
   return availability.filter((slot) => slot.available).map((slot) => slot.time);
+}
+
+function getAvailableEndTimes(room, dateKey, startTime) {
+  const availability = getDayAvailability(room, dateKey);
+  const startIndex = availability.findIndex((slot) => slot.time === startTime);
+  if (startIndex < 0) return [];
+
+  const ends = [];
+  for (let endIndex = startIndex + 1; endIndex <= availability.length; endIndex += 1) {
+    const slice = availability.slice(startIndex, endIndex);
+    if (slice.length && slice.every((slot) => slot.available)) {
+      ends.push(availability[endIndex - 1].time ? addMinutes(availability[endIndex - 1].time, SLOT_MINUTES) : "");
+    } else {
+      break;
+    }
+  }
+
+  return ends.filter(Boolean);
 }
 
 function overlaps(startA, endA, startB, endB) {
@@ -466,7 +526,6 @@ function shortDayLabel(dateKey) {
   const date = new Date(`${dateKey}T12:00:00`);
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
-    month: "2-digit",
   }).format(date);
 }
 
@@ -500,6 +559,16 @@ function toMinutes(time) {
   return hours * 60 + mins;
 }
 
+function isValidTimeFormat(time) {
+  if (!/^\d{2}:\d{2}$/.test(time)) return false;
+  const [hours, minutes] = time.split(":").map(Number);
+  return Number.isInteger(hours) && Number.isInteger(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60;
+}
+
+function isSlotAligned(time) {
+  return isValidTimeFormat(time) && toMinutes(time) % SLOT_MINUTES === 0;
+}
+
 function seededNumber(input) {
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
@@ -516,11 +585,8 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-function dateKeyOrFallback(todayValue, weekDates, fallback) {
-  if (weekDates.includes(todayValue)) {
-    return todayValue;
-  }
-  return fallback;
+function escapeAttr(value) {
+  return escapeHtml(String(value ?? ""));
 }
 
 function escapeHtml(value) {
