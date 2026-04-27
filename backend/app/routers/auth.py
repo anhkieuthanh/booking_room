@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> TokenOut:
     existing = db.query(User).filter(User.email == payload.email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email đã được đăng ký")
     user = User(
         email=payload.email,
         name=payload.name,
@@ -33,7 +33,7 @@ def register(payload: UserCreate, db: Annotated[Session, Depends(get_db)]) -> To
 def login(payload: UserLogin, db: Annotated[Session, Depends(get_db)]) -> TokenOut:
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
     return TokenOut(access_token=create_access_token(user.id), user=UserOut.model_validate(user))
 
 
@@ -44,7 +44,7 @@ def login_form(
 ) -> TokenOut:
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Email hoặc mật khẩu không đúng")
     return TokenOut(access_token=create_access_token(user.id), user=UserOut.model_validate(user))
 
 

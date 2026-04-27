@@ -12,7 +12,7 @@ export default function RoomsPage() {
     api
       .listRooms()
       .then(setRooms)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load rooms"));
+      .catch((e) => setError(e instanceof Error ? e.message : "Không tải được danh sách phòng"));
   }, []);
 
   const filtered = useMemo(() => {
@@ -35,19 +35,19 @@ export default function RoomsPage() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Meeting rooms</h1>
-          <p className="text-sm text-slate-500">Pick a room and reserve a time slot.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Phòng họp</h1>
+          <p className="text-sm text-slate-500">Chọn phòng và đặt khung giờ phù hợp.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <input
             className="input md:w-64"
-            placeholder="Search rooms, amenities…"
+            placeholder="Tìm phòng, tiện nghi…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <input
-            className="input w-32"
-            placeholder="Min capacity"
+            className="input w-40"
+            placeholder="Sức chứa tối thiểu"
             type="number"
             min={1}
             value={minCap}
@@ -56,11 +56,13 @@ export default function RoomsPage() {
         </div>
       </div>
 
-      {error && <div className="text-sm text-rose-600 mb-4">{error}</div>}
-      {rooms === null && !error && <div className="text-sm text-slate-500">Loading rooms…</div>}
+      {error && <div className="text-sm text-flag-600 mb-4">{error}</div>}
+      {rooms === null && !error && (
+        <div className="text-sm text-slate-500">Đang tải danh sách phòng…</div>
+      )}
 
       {rooms !== null && filtered.length === 0 && (
-        <div className="card p-8 text-center text-slate-500">No rooms match your filters.</div>
+        <div className="card p-8 text-center text-slate-500">Không có phòng nào phù hợp.</div>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -80,15 +82,15 @@ export default function RoomsPage() {
                 />
               ) : (
                 <div className="h-full w-full grid place-items-center text-slate-400 text-sm">
-                  No image
+                  Chưa có ảnh
                 </div>
               )}
             </div>
             <div className="p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900">{r.name}</h3>
-                <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
-                  Seats {r.capacity}
+                <span className="text-xs rounded-full bg-sun-100 text-brand-800 px-2 py-0.5 font-medium">
+                  {r.capacity} chỗ
                 </span>
               </div>
               <div className="text-sm text-slate-500 mt-1">{r.location || "—"}</div>

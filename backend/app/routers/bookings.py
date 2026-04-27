@@ -15,9 +15,9 @@ router = APIRouter(prefix="/api/bookings", tags=["bookings"])
 
 def _validate_window(start: datetime, end: datetime) -> None:
     if end <= start:
-        raise HTTPException(status_code=400, detail="end_time must be after start_time")
+        raise HTTPException(status_code=400, detail="Thời gian kết thúc phải sau thời gian bắt đầu")
     if (end - start).total_seconds() > 24 * 3600:
-        raise HTTPException(status_code=400, detail="Booking cannot exceed 24 hours")
+        raise HTTPException(status_code=400, detail="Lịch đặt không được vượt quá 24 giờ")
 
 
 def _has_conflict(
@@ -66,9 +66,9 @@ def create_booking(
     _validate_window(payload.start_time, payload.end_time)
     room = db.get(Room, payload.room_id)
     if room is None or not room.is_active:
-        raise HTTPException(status_code=404, detail="Room not found or inactive")
+        raise HTTPException(status_code=404, detail="Phòng không tồn tại hoặc đã ngừng hoạt động")
     if _has_conflict(db, payload.room_id, payload.start_time, payload.end_time):
-        raise HTTPException(status_code=409, detail="Time slot conflicts with an existing booking")
+        raise HTTPException(status_code=409, detail="Khung giờ này đã có lịch đặt khác")
 
     booking = Booking(
         room_id=payload.room_id,
@@ -98,8 +98,8 @@ def cancel_booking(
 ) -> None:
     booking = db.get(Booking, booking_id)
     if booking is None:
-        raise HTTPException(status_code=404, detail="Booking not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy lịch đặt")
     if booking.user_id != current_user.id and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only cancel your own bookings")
+        raise HTTPException(status_code=403, detail="Bạn chỉ có thể huỷ lịch đặt của chính mình")
     db.delete(booking)
     db.commit()

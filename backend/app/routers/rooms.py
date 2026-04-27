@@ -30,7 +30,7 @@ def list_rooms(
 def get_room(room_id: int, db: Annotated[Session, Depends(get_db)]) -> RoomOut:
     room = db.get(Room, room_id)
     if room is None:
-        raise HTTPException(status_code=404, detail="Room not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng")
     return RoomOut.model_validate(room)
 
 
@@ -41,7 +41,7 @@ def create_room(
     _: Annotated[User, Depends(get_current_admin)],
 ) -> RoomOut:
     if db.query(Room).filter(Room.name == payload.name).first():
-        raise HTTPException(status_code=400, detail="Room name already exists")
+        raise HTTPException(status_code=400, detail="Tên phòng đã tồn tại")
     room = Room(**payload.model_dump())
     db.add(room)
     db.commit()
@@ -58,11 +58,11 @@ def update_room(
 ) -> RoomOut:
     room = db.get(Room, room_id)
     if room is None:
-        raise HTTPException(status_code=404, detail="Room not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng")
     data = payload.model_dump(exclude_unset=True)
     if "name" in data and data["name"] != room.name:
         if db.query(Room).filter(Room.name == data["name"]).first():
-            raise HTTPException(status_code=400, detail="Room name already exists")
+            raise HTTPException(status_code=400, detail="Tên phòng đã tồn tại")
     for k, v in data.items():
         setattr(room, k, v)
     db.commit()
@@ -78,6 +78,6 @@ def delete_room(
 ) -> None:
     room = db.get(Room, room_id)
     if room is None:
-        raise HTTPException(status_code=404, detail="Room not found")
+        raise HTTPException(status_code=404, detail="Không tìm thấy phòng")
     db.delete(room)
     db.commit()

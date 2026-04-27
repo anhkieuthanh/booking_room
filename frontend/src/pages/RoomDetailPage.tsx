@@ -51,7 +51,7 @@ export default function RoomDetailPage() {
       setRoom(r);
       setBookings(b);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load room");
+      setError(e instanceof Error ? e.message : "Không tải được phòng");
     }
   }, [roomId, dayStart, dayEnd]);
 
@@ -93,45 +93,45 @@ export default function RoomDetailPage() {
       const start = new Date(startStr);
       const end = new Date(endStr);
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        throw new Error("Please choose a start and end time");
+        throw new Error("Vui lòng chọn thời gian bắt đầu và kết thúc");
       }
       await api.createBooking({
         room_id: room.id,
-        title: title.trim() || "Meeting",
+        title: title.trim() || "Cuộc họp",
         notes,
         start_time: toNaiveIso(start),
         end_time: toNaiveIso(end),
       });
       setTitle("");
       setNotes("");
-      setSuccess("Booking confirmed.");
+      setSuccess("Đặt phòng thành công.");
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Booking failed");
+      setError(err instanceof Error ? err.message : "Đặt phòng thất bại");
     } finally {
       setSubmitting(false);
     }
   }
 
   async function onCancel(b: Booking) {
-    if (!confirm(`Cancel booking "${b.title}"?`)) return;
+    if (!confirm(`Huỷ đặt phòng "${b.title}"?`)) return;
     try {
       await api.cancelBooking(b.id);
       await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel");
+      setError(err instanceof Error ? err.message : "Huỷ thất bại");
     }
   }
 
-  if (!room && !error) return <div className="text-sm text-slate-500">Loading room…</div>;
-  if (error && !room) return <div className="text-sm text-rose-600">{error}</div>;
+  if (!room && !error) return <div className="text-sm text-slate-500">Đang tải phòng…</div>;
+  if (error && !room) return <div className="text-sm text-flag-600">{error}</div>;
   if (!room) return null;
 
   return (
     <div>
       <div className="mb-4">
         <Link to="/" className="text-sm text-brand-700 hover:underline">
-          ← All rooms
+          ← Tất cả phòng
         </Link>
       </div>
 
@@ -146,8 +146,8 @@ export default function RoomDetailPage() {
             <div className="p-5">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-semibold text-slate-900">{room.name}</h1>
-                <span className="text-sm rounded-full bg-slate-100 text-slate-700 px-3 py-1">
-                  Seats {room.capacity}
+                <span className="text-sm rounded-full bg-sun-100 text-brand-800 px-3 py-1 font-medium">
+                  {room.capacity} chỗ
                 </span>
               </div>
               <div className="text-slate-500 mt-1">{room.location}</div>
@@ -175,7 +175,11 @@ export default function RoomDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-slate-900">{fmtDateLong(dayStart)}</h2>
               <div className="flex items-center gap-2">
-                <button className="btn-secondary" onClick={() => setDate(addDays(date, -1))}>
+                <button
+                  className="btn-secondary"
+                  aria-label="Ngày trước"
+                  onClick={() => setDate(addDays(date, -1))}
+                >
                   ←
                 </button>
                 <input
@@ -186,7 +190,11 @@ export default function RoomDetailPage() {
                     if (e.target.value) setDate(new Date(e.target.value + "T00:00:00"));
                   }}
                 />
-                <button className="btn-secondary" onClick={() => setDate(addDays(date, 1))}>
+                <button
+                  className="btn-secondary"
+                  aria-label="Ngày kế tiếp"
+                  onClick={() => setDate(addDays(date, 1))}
+                >
                   →
                 </button>
               </div>
@@ -210,7 +218,7 @@ export default function RoomDetailPage() {
                     type="button"
                     className="block w-full h-12 border-b border-slate-100 hover:bg-brand-50/50 text-left"
                     onClick={() => pickSlot(h)}
-                    aria-label={`Book at ${h}:00`}
+                    aria-label={`Đặt lúc ${h}:00`}
                   />
                 ))}
                 {segments.map(({ booking, top, height, isMine }) => (
@@ -219,7 +227,7 @@ export default function RoomDetailPage() {
                     className={`absolute left-1 right-1 rounded-md px-2 py-1 text-xs shadow-sm ${
                       isMine
                         ? "bg-brand-600 text-white"
-                        : "bg-rose-100 text-rose-800 ring-1 ring-rose-200"
+                        : "bg-flag-100 text-flag-800 ring-1 ring-flag-200"
                     }`}
                     style={{ top: `${top}%`, height: `${Math.max(height, 4)}%` }}
                     title={`${booking.title} · ${booking.user.name}`}
@@ -235,7 +243,7 @@ export default function RoomDetailPage() {
                         onClick={() => onCancel(booking)}
                         className="absolute top-1 right-1 text-[10px] underline"
                       >
-                        cancel
+                        huỷ
                       </button>
                     )}
                   </div>
@@ -245,33 +253,33 @@ export default function RoomDetailPage() {
 
             <div className="mt-3 flex items-center gap-3 text-xs text-slate-500">
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block w-3 h-3 rounded bg-brand-600" /> Your booking
+                <span className="inline-block w-3 h-3 rounded bg-brand-600" /> Lịch của bạn
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block w-3 h-3 rounded bg-rose-100 ring-1 ring-rose-200" />{" "}
-                Booked
+                <span className="inline-block w-3 h-3 rounded bg-flag-100 ring-1 ring-flag-200" />{" "}
+                Đã có người đặt
               </span>
-              <span>Click a free slot to pre-fill the booking form.</span>
+              <span>Bấm vào ô trống để điền nhanh form đặt phòng.</span>
             </div>
           </div>
         </div>
 
         <aside>
           <form onSubmit={onSubmit} className="card p-5 space-y-4 sticky top-4">
-            <h2 className="font-semibold text-slate-900">Reserve {room.name}</h2>
+            <h2 className="font-semibold text-slate-900">Đặt phòng {room.name}</h2>
             <div>
-              <label className="label">Title</label>
+              <label className="label">Tiêu đề</label>
               <input
                 className="input mt-1"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Sprint planning"
+                placeholder="Họp triển khai sprint"
                 required
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="label">Start</label>
+                <label className="label">Bắt đầu</label>
                 <input
                   className="input mt-1"
                   type="datetime-local"
@@ -281,7 +289,7 @@ export default function RoomDetailPage() {
                 />
               </div>
               <div>
-                <label className="label">End</label>
+                <label className="label">Kết thúc</label>
                 <input
                   className="input mt-1"
                   type="datetime-local"
@@ -292,7 +300,7 @@ export default function RoomDetailPage() {
               </div>
             </div>
             <div>
-              <label className="label">Notes (optional)</label>
+              <label className="label">Ghi chú (không bắt buộc)</label>
               <textarea
                 className="input mt-1"
                 rows={3}
@@ -300,13 +308,13 @@ export default function RoomDetailPage() {
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
-            {error && <div className="text-sm text-rose-600">{error}</div>}
+            {error && <div className="text-sm text-flag-600">{error}</div>}
             {success && <div className="text-sm text-emerald-700">{success}</div>}
             <button className="btn-primary w-full" disabled={submitting}>
-              {submitting ? "Booking…" : "Confirm booking"}
+              {submitting ? "Đang đặt…" : "Xác nhận đặt phòng"}
             </button>
             <p className="text-xs text-slate-500">
-              Showing availability for {fmtDate(dayStart)}.
+              Đang xem lịch ngày {fmtDate(dayStart)}.
             </p>
           </form>
         </aside>

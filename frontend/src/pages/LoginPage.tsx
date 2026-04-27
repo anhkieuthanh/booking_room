@@ -24,7 +24,7 @@ export default function LoginPage() {
       await login(email, password);
       nav(from, { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
@@ -43,9 +43,9 @@ export default function LoginPage() {
   return (
     <div className="max-w-md mx-auto">
       <div className="card p-6">
-        <h1 className="text-xl font-semibold text-slate-900">Sign in</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Đăng nhập</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Use your work email to manage your meeting rooms.
+          Dùng email công ty để quản lý lịch đặt phòng họp.
         </p>
         <form className="mt-6 space-y-4" onSubmit={onSubmit}>
           <div>
@@ -60,7 +60,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="label">Password</label>
+            <label className="label">Mật khẩu</label>
             <input
               className="input mt-1"
               type="password"
@@ -70,26 +70,26 @@ export default function LoginPage() {
               required
             />
           </div>
-          {error && <div className="text-sm text-rose-600">{error}</div>}
+          {error && <div className="text-sm text-flag-600">{error}</div>}
           <button className="btn-primary w-full" disabled={loading}>
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Đang đăng nhập…" : "Đăng nhập"}
           </button>
         </form>
         <div className="mt-6 border-t border-slate-200 pt-4 text-sm">
-          <div className="text-slate-500 mb-2">Demo accounts</div>
+          <div className="text-slate-500 mb-2">Tài khoản demo</div>
           <div className="flex gap-2">
             <button type="button" className="btn-secondary" onClick={() => fillDemo("admin")}>
-              Admin
+              Quản trị
             </button>
             <button type="button" className="btn-secondary" onClick={() => fillDemo("user")}>
-              Employee
+              Nhân viên
             </button>
           </div>
         </div>
         <div className="mt-4 text-sm text-slate-600">
-          New here?{" "}
+          Chưa có tài khoản?{" "}
           <Link to="/register" className="text-brand-700 hover:underline">
-            Create an account
+            Tạo tài khoản mới
           </Link>
         </div>
       </div>
