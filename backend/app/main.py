@@ -61,12 +61,17 @@ if _frontend_dist is not None:
     def _serve_index() -> FileResponse:
         return FileResponse(index_file)
 
+    _dist_root = _frontend_dist.resolve()
+
     @app.get("/{full_path:path}", include_in_schema=False)
     def _serve_spa(full_path: str) -> FileResponse:
         # Don't shadow API or docs routes.
         if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
             raise HTTPException(status_code=404)
-        candidate: Path = _frontend_dist / full_path
-        if candidate.is_file():
+        # Resolve the requested path and confirm it stays inside the dist
+        # directory so URL-encoded `..` segments cannot escape and read
+        # arbitrary files (e.g. /data/app.db, /proc/self/environ).
+        candidate = (_frontend_dist / full_path).resolve()
+        if candidate.is_file() and candidate.is_relative_to(_dist_root):
             return FileResponse(candidate)
         return FileResponse(index_file)
