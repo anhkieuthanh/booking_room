@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hoanglong-booking-room:latest
+    container_name: hoanglong-booking-room
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Override these in production. CHANGE THE JWT SECRET.
+      JWT_SECRET: "change-me-in-production"
+      CORS_ORIGINS: "*"
+      SEED_ADMIN_EMAIL: "admin@example.com"
+      SEED_ADMIN_PASSWORD: "admin123"
+      SEED_ADMIN_NAME: "Quản trị viên"
+    volumes:
+      - booking-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  booking-data:
