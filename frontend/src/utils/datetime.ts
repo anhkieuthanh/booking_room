@@ -37,14 +37,21 @@ export function parseNaiveIso(s: string): Date {
   return new Date(s);
 }
 
+const LOCALE = "vi-VN";
+
 export function fmtTime(d: Date): string {
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 export function fmtDate(d: Date): string {
-  return d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return d.toLocaleDateString(LOCALE, { weekday: "short", day: "numeric", month: "short" });
 }
 
 export function fmtDateLong(d: Date): string {
-  return d.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  return d.toLocaleDateString(LOCALE, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }

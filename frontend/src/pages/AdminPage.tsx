@@ -35,7 +35,7 @@ export default function AdminPage() {
     api
       .listRooms({ include_inactive: true })
       .then(setRooms)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
+      .catch((e) => setError(e instanceof Error ? e.message : "Không tải được dữ liệu"));
   }, []);
 
   useEffect(() => {
@@ -87,35 +87,35 @@ export default function AdminPage() {
       setForm(EMPTY);
       reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : "Lưu thất bại");
     } finally {
       setSubmitting(false);
     }
   }
 
   async function onDelete(r: Room) {
-    if (!confirm(`Delete room "${r.name}"? This cancels all its bookings.`)) return;
+    if (!confirm(`Xoá phòng "${r.name}"? Tất cả lịch đặt sẽ bị huỷ.`)) return;
     try {
       await api.deleteRoom(r.id);
       reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Delete failed");
+      setError(err instanceof Error ? err.message : "Xoá thất bại");
     }
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900 mb-1">Admin · Rooms</h1>
-      <p className="text-sm text-slate-500 mb-6">Add, edit or remove meeting rooms.</p>
+      <h1 className="text-2xl font-semibold text-slate-900 mb-1">Quản trị · Phòng họp</h1>
+      <p className="text-sm text-slate-500 mb-6">Thêm, sửa hoặc xoá phòng họp.</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          {error && <div className="text-sm text-rose-600 mb-3">{error}</div>}
+          {error && <div className="text-sm text-flag-600 mb-3">{error}</div>}
           <div className="card divide-y divide-slate-200">
             {rooms === null ? (
-              <div className="p-4 text-sm text-slate-500">Loading…</div>
+              <div className="p-4 text-sm text-slate-500">Đang tải…</div>
             ) : rooms.length === 0 ? (
-              <div className="p-4 text-sm text-slate-500">No rooms yet.</div>
+              <div className="p-4 text-sm text-slate-500">Chưa có phòng nào.</div>
             ) : (
               rooms.map((r) => (
                 <div key={r.id} className="p-4 flex items-center justify-between gap-3">
@@ -124,20 +124,20 @@ export default function AdminPage() {
                       {r.name}{" "}
                       {!r.is_active && (
                         <span className="ml-1 text-xs rounded bg-slate-200 text-slate-700 px-1.5 py-0.5">
-                          inactive
+                          ngừng hoạt động
                         </span>
                       )}
                     </div>
                     <div className="text-sm text-slate-500">
-                      {r.location} · seats {r.capacity}
+                      {r.location} · {r.capacity} chỗ
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button className="btn-secondary" onClick={() => startEdit(r)}>
-                      Edit
+                      Sửa
                     </button>
                     <button className="btn-danger" onClick={() => onDelete(r)}>
-                      Delete
+                      Xoá
                     </button>
                   </div>
                 </div>
@@ -150,16 +150,16 @@ export default function AdminPage() {
           <form onSubmit={onSubmit} className="card p-5 space-y-4 sticky top-4">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-slate-900">
-                {editing ? `Edit "${editing.name}"` : "New room"}
+                {editing ? `Sửa "${editing.name}"` : "Thêm phòng mới"}
               </h2>
               {editing && (
                 <button type="button" className="text-sm text-slate-500" onClick={startCreate}>
-                  + new
+                  + thêm mới
                 </button>
               )}
             </div>
             <div>
-              <label className="label">Name</label>
+              <label className="label">Tên phòng</label>
               <input
                 className="input mt-1"
                 value={form.name}
@@ -168,7 +168,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="label">Location</label>
+              <label className="label">Vị trí</label>
               <input
                 className="input mt-1"
                 value={form.location}
@@ -176,7 +176,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="label">Capacity</label>
+              <label className="label">Sức chứa</label>
               <input
                 className="input mt-1"
                 type="number"
@@ -187,7 +187,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="label">Description</label>
+              <label className="label">Mô tả</label>
               <textarea
                 className="input mt-1"
                 rows={3}
@@ -196,7 +196,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="label">Amenities (comma separated)</label>
+              <label className="label">Tiện nghi (phân tách bởi dấu phẩy)</label>
               <input
                 className="input mt-1"
                 value={form.amenities}
@@ -204,7 +204,7 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className="label">Image URL</label>
+              <label className="label">Đường dẫn ảnh</label>
               <input
                 className="input mt-1"
                 value={form.image_url}
@@ -217,10 +217,10 @@ export default function AdminPage() {
                 checked={form.is_active}
                 onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
               />
-              Active (bookable)
+              Đang hoạt động (có thể đặt)
             </label>
             <button className="btn-primary w-full" disabled={submitting}>
-              {submitting ? "Saving…" : editing ? "Save changes" : "Create room"}
+              {submitting ? "Đang lưu…" : editing ? "Lưu thay đổi" : "Tạo phòng"}
             </button>
           </form>
         </aside>

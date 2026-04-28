@@ -11,7 +11,7 @@ export default function MyBookingsPage() {
     api
       .listBookings({ mine: true })
       .then(setBookings)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
+      .catch((e) => setError(e instanceof Error ? e.message : "Không tải được dữ liệu"));
   }, []);
 
   useEffect(() => {
@@ -19,12 +19,12 @@ export default function MyBookingsPage() {
   }, [reload]);
 
   async function cancel(b: Booking) {
-    if (!confirm(`Cancel booking "${b.title}"?`)) return;
+    if (!confirm(`Huỷ đặt phòng "${b.title}"?`)) return;
     try {
       await api.cancelBooking(b.id);
       reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to cancel");
+      setError(err instanceof Error ? err.message : "Huỷ thất bại");
     }
   }
 
@@ -34,26 +34,26 @@ export default function MyBookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900 mb-1">My bookings</h1>
-      <p className="text-sm text-slate-500 mb-6">All meetings you've reserved.</p>
+      <h1 className="text-2xl font-semibold text-slate-900 mb-1">Lịch của tôi</h1>
+      <p className="text-sm text-slate-500 mb-6">Tất cả các cuộc họp bạn đã đặt.</p>
 
-      {error && <div className="text-sm text-rose-600 mb-4">{error}</div>}
-      {bookings === null && !error && <div className="text-sm text-slate-500">Loading…</div>}
+      {error && <div className="text-sm text-flag-600 mb-4">{error}</div>}
+      {bookings === null && !error && <div className="text-sm text-slate-500">Đang tải…</div>}
 
       {bookings !== null && bookings.length === 0 && (
         <div className="card p-8 text-center text-slate-500">
-          You don't have any bookings yet.{" "}
+          Bạn chưa có lịch đặt phòng nào.{" "}
           <Link to="/" className="text-brand-700 hover:underline">
-            Reserve a room
+            Đặt phòng ngay
           </Link>
           .
         </div>
       )}
 
       {upcoming.length > 0 && (
-        <Section title="Upcoming" bookings={upcoming} onCancel={cancel} canCancel />
+        <Section title="Sắp diễn ra" bookings={upcoming} onCancel={cancel} canCancel />
       )}
-      {past.length > 0 && <Section title="Past" bookings={past} muted />}
+      {past.length > 0 && <Section title="Đã kết thúc" bookings={past} muted />}
     </div>
   );
 }
@@ -101,7 +101,7 @@ function Section({
               </div>
               {canCancel && onCancel && (
                 <button className="btn-danger" onClick={() => onCancel(b)}>
-                  Cancel
+                  Huỷ
                 </button>
               )}
             </div>

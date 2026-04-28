@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .db import Base, SessionLocal, engine
@@ -40,3 +43,35 @@ def healthz() -> dict[str, str]:
 app.include_router(auth.router)
 app.include_router(rooms.router)
 app.include_router(bookings.router)
+
+
+# Serve the built React frontend when bundled into the same image. The
+# FRONTEND_DIST env var points at the Vite `dist/` folder; if it's set and
+# exists we mount its assets and fall back to index.html for any non-API path
+# so the SPA router (BrowserRouter) works on hard refreshes.
+_frontend_dist = settings.frontend_dist_resolved()
+if _frontend_dist is not None:
+    assets_dir = _frontend_dist / "assets"
+    if assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    index_file = _frontend_dist / "index.html"
+
+    @app.get("/", include_in_schema=False)
+    def _serve_index() -> FileResponse:
+        return FileResponse(index_file)
+
+    _dist_root = _frontend_dist.resolve()
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def _serve_spa(full_path: str) -> FileResponse:
+        # Don't shadow API or docs routes.
+        if full_path.startswith(("api/", "docs", "redoc", "openapi.json")):
+            raise HTTPException(status_code=404)
+        # Resolve the requested path and confirm it stays inside the dist
+        # directory so URL-encoded `..` segments cannot escape and read
+        # arbitrary files (e.g. /data/app.db, /proc/self/environ).
+        candidate = (_frontend_dist / full_path).resolve()
+        if candidate.is_file() and candidate.is_relative_to(_dist_root):
+            return FileResponse(candidate)
+        return FileResponse(index_file)
